@@ -21,9 +21,21 @@ With Docker Compose:
 docker compose up -d
 ```
 
-No API keys are required. To enable optional providers, create `.env` next to
-`docker-compose.yaml` and add the variables documented in the original project's
-[`.env.example`](https://github.com/bilawalsidhu/gods-eye-view/blob/main/.env.example).
+> [!IMPORTANT]
+> Put the `.env` file in the **same folder as `docker-compose.yaml`**. Do not
+> place it inside `./data`.
+
+No API keys are required. To enable optional providers, add the variables
+documented in the original project's
+[`.env.example`](https://github.com/bilawalsidhu/gods-eye-view/blob/main/.env.example)
+to that `.env` file.
+
+```text
+gods-eye-view-docker/
+├── docker-compose.yaml
+├── .env
+└── data/
+```
 
 The local `./data` directory preserves the application's `.env`, caches, and
 logs across container replacements. To update the app:
