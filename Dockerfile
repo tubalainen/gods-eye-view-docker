@@ -24,6 +24,8 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=4173
 
+RUN apk add --no-cache su-exec
+
 LABEL org.opencontainers.image.source="https://github.com/tubalainen/gods-eye-view-docker" \
       org.opencontainers.image.url="https://github.com/bilawalsidhu/gods-eye-view" \
       org.opencontainers.image.licenses="MIT"
@@ -41,8 +43,9 @@ RUN mkdir -p /data/cache /data/logs \
     && ln -s /data/logs /app/.gev-logs \
     && ln -s /data/.env /app/.env
 
-USER node
-VOLUME ["/data"]
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/gev-entrypoint
+
+ENTRYPOINT ["/usr/local/bin/gev-entrypoint"]
 EXPOSE 4173
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

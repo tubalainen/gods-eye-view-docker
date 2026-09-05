@@ -9,7 +9,7 @@ original repository directly and packages it for Docker.
 
 ```bash
 docker run --rm -p 4173:4173 \
-  -v gods-eye-view-data:/data \
+  -v "$(pwd)/data:/data" \
   ghcr.io/tubalainen/gods-eye-view-docker:latest
 ```
 
@@ -22,11 +22,11 @@ docker compose up -d
 ```
 
 No API keys are required. To enable optional providers, create `.env` next to
-`compose.yaml` and add the variables documented in the original project's
+`docker-compose.yaml` and add the variables documented in the original project's
 [`.env.example`](https://github.com/bilawalsidhu/gods-eye-view/blob/main/.env.example).
 
-The named volume preserves the application's `.env`, caches, and logs across
-container replacements. To update the app:
+The local `./data` directory preserves the application's `.env`, caches, and
+logs across container replacements. To update the app:
 
 ```bash
 docker compose pull

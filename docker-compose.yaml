@@ -17,7 +17,4 @@ services:
       PORT: 4173
     init: true
     volumes:
-      - gods-eye-view-data:/data
-
-volumes:
-  gods-eye-view-data:
+      - ./data:/data

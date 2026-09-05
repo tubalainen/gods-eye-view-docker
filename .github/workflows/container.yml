@@ -5,8 +5,10 @@ on:
     branches: [main]
     paths:
       - Dockerfile
-      - compose.yaml
+      - docker-compose.yaml
+      - docker-entrypoint.sh
       - .dockerignore
+      - .gitattributes
       - .github/workflows/container.yml
   schedule:
     - cron: "17 4 * * *"
@@ -62,7 +64,8 @@ jobs:
       - name: Smoke-test container and writable data
         shell: bash
         run: |
-          docker run --detach --name gods-eye-view-smoke --publish 4173:4173 gods-eye-view:smoke
+          mkdir -p "${RUNNER_TEMP}/gods-eye-view-data"
+          docker run --detach --name gods-eye-view-smoke --publish 4173:4173 --volume "${RUNNER_TEMP}/gods-eye-view-data:/data" gods-eye-view:smoke
           docker exec gods-eye-view-smoke sh -c 'test -w /data/cache && touch /app/.gev-cache/smoke-test'
           for attempt in {1..30}; do
             if curl --fail --silent --show-error http://127.0.0.1:4173/ > /dev/null; then
