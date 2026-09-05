@@ -1,0 +1,23 @@
+services:
+  gods-eye-view:
+    image: ghcr.io/tubalainen/gods-eye-view-docker:latest
+    build:
+      context: .
+      args:
+        GEV_REF: ${GEV_REF:-main}
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "${GEV_PORT:-4173}:4173"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4173
+    init: true
+    volumes:
+      - gods-eye-view-data:/data
+
+volumes:
+  gods-eye-view-data:

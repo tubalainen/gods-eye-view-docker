@@ -1,0 +1,7 @@
+.env
+*.log
+.gev-cache/
+.gev-logs/
+.npm-cache/
+dist/
+node_modules/

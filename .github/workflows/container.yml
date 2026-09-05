@@ -1,0 +1,107 @@
+name: Build upstream container
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - compose.yaml
+      - .dockerignore
+      - .github/workflows/container.yml
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      upstream_ref:
+        description: Upstream branch, tag, or commit to build
+        required: false
+        default: main
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: upstream-container-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Docker wrapper
+        uses: actions/checkout@v4
+
+      - name: Resolve upstream revision
+        id: upstream
+        env:
+          REQUESTED_REF: ${{ inputs.upstream_ref || 'main' }}
+        shell: bash
+        run: |
+          git init --bare /tmp/gods-eye-view-upstream
+          git -C /tmp/gods-eye-view-upstream fetch --depth 1 https://github.com/bilawalsidhu/gods-eye-view.git "${REQUESTED_REF}"
+          sha=$(git -C /tmp/gods-eye-view-upstream rev-parse 'FETCH_HEAD^{commit}')
+          echo "sha=${sha}" >> "${GITHUB_OUTPUT}"
+          echo "short_sha=${sha:0:12}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build smoke-test image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          build-args: GEV_REF=${{ steps.upstream.outputs.sha }}
+          load: true
+          tags: gods-eye-view:smoke
+          cache-from: type=gha
+
+      - name: Smoke-test container and writable data
+        shell: bash
+        run: |
+          docker run --detach --name gods-eye-view-smoke --publish 4173:4173 gods-eye-view:smoke
+          docker exec gods-eye-view-smoke sh -c 'test -w /data/cache && touch /app/.gev-cache/smoke-test'
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:4173/ > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs gods-eye-view-smoke
+          exit 1
+
+      - name: Remove smoke-test container
+        if: always()
+        run: docker rm --force gods-eye-view-smoke || true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=upstream-${{ steps.upstream.outputs.short_sha }}
+            type=sha,prefix=addon-
+
+      - name: Build and publish multi-architecture image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          build-args: GEV_REF=${{ steps.upstream.outputs.sha }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
